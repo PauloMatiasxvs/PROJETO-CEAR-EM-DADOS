@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # toda segunda: atualiza os dados do IBGE
 
 permissions:
   contents: write
@@ -17,6 +19,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Baixa os dados do IBGE para publicar junto com o site
+        run: |
+          mkdir -p dados
+          baixar() {
+            if curl -fsSL --retry 3 --max-time 120 "$1" -o "dados/$2.tmp" \
+               && python3 -c "import json,sys; json.load(open(sys.argv[1]))" "dados/$2.tmp"; then
+              mv "dados/$2.tmp" "dados/$2"
+              echo "ok: dados/$2 ($(du -h "dados/$2" | cut -f1))"
+            else
+              rm -f "dados/$2.tmp"
+              echo "aviso: falha ao baixar $2 — o site usa a API ao vivo como plano B"
+            fi
+          }
+          baixar "https://servicodados.ibge.gov.br/api/v3/agregados/4709/periodos/2022/variaveis/93?localidades=N6%5BN3%5B23%5D%5D" populacao.json
+          baixar "https://servicodados.ibge.gov.br/api/v1/localidades/estados/23/municipios?orderBy=nome" localidades.json
+          baixar "https://servicodados.ibge.gov.br/api/v3/malhas/estados/23?formato=application%2Fvnd.geo%2Bjson&qualidade=minima&intrarregiao=municipio" malha.json
+
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
