@@ -9,9 +9,15 @@
 
 const IBGE = (() => {
   const BASE = "https://servicodados.ibge.gov.br/api";
-  const URL_POPULACAO = `${BASE}/v3/agregados/4709/periodos/2022/variaveis/93?localidades=N6[N3[23]]`;
+  const URL_POPULACAO = `${BASE}/v3/agregados/4709/periodos/2022/variaveis/93?localidades=N6%5BN3%5B23%5D%5D`;
   const URL_LOCALIDADES = `${BASE}/v1/localidades/estados/23/municipios?orderBy=nome`;
-  const URL_MALHA = `${BASE}/v3/malhas/estados/23?formato=application/vnd.geo+json&qualidade=minima&intrarregiao=municipio`;
+  const URL_MALHA = `${BASE}/v3/malhas/estados/23?formato=application%2Fvnd.geo%2Bjson&qualidade=minima&intrarregiao=municipio`;
+
+  // cópias baixadas no deploy e publicadas junto com o site
+  // (ver .github/workflows/deploy.yml) — carregam sem depender da API
+  const LOCAL_POPULACAO = "dados/populacao.json";
+  const LOCAL_LOCALIDADES = "dados/localidades.json";
+  const LOCAL_MALHA = "dados/malha.json";
 
   const TTL = 7 * 24 * 3600 * 1000; // 7 dias
 
@@ -41,6 +47,18 @@ const IBGE = (() => {
     const resp = await fetch(url, { headers: { Accept: "application/json" } });
     if (!resp.ok) throw new Error(`IBGE respondeu ${resp.status}`);
     return resp.json();
+  };
+
+  // tenta primeiro a cópia local publicada com o site; se não existir
+  // (ex.: rodando da main sem build), cai para a API ao vivo do IBGE
+  const baixarComFallback = async (urlLocal, urlApi) => {
+    try {
+      const resp = await fetch(urlLocal, { headers: { Accept: "application/json" } });
+      if (resp.ok) return await resp.json();
+    } catch {
+      /* segue para a API */
+    }
+    return baixarJson(urlApi);
   };
 
   // remove sufixo de UF que a API às vezes inclui: "Fortaleza (CE)" / "Fortaleza - CE"
@@ -92,7 +110,7 @@ const IBGE = (() => {
       mesclarNaBase(emCache);
       return;
     }
-    const json = await baixarJson(URL_POPULACAO);
+    const json = await baixarComFallback(LOCAL_POPULACAO, URL_POPULACAO);
     const municipios = extrairSeries(json);
     if (municipios.length < 100) throw new Error("API devolveu menos municípios que o esperado");
     cacheGravar("ce-ibge-populacao", municipios);
@@ -103,7 +121,7 @@ const IBGE = (() => {
   const carregarLocalidades = async () => {
     const emCache = cacheLer("ce-ibge-localidades");
     if (emCache) return emCache;
-    const json = await baixarJson(URL_LOCALIDADES);
+    const json = await baixarComFallback(LOCAL_LOCALIDADES, URL_LOCALIDADES);
     if (!Array.isArray(json)) throw new Error("formato inesperado da API de localidades");
     const mapa = {};
     for (const m of json) mapa[String(m.id)] = limparNome(m.nome);
@@ -115,7 +133,7 @@ const IBGE = (() => {
   const carregarMalha = async () => {
     const emCache = cacheLer("ce-ibge-malha");
     if (emCache) return emCache;
-    const geo = await baixarJson(URL_MALHA);
+    const geo = await baixarComFallback(LOCAL_MALHA, URL_MALHA);
     if (!Array.isArray(geo?.features)) throw new Error("formato inesperado da API de malhas");
     cacheGravar("ce-ibge-malha", geo);
     return geo;
