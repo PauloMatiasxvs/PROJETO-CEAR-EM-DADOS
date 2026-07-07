@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ceará em Dados — Chat IA</title>
+  <meta name="description" content="Pergunte em linguagem natural sobre dados públicos do Ceará e receba respostas com gráficos gerados por IA." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- ===== Cabeçalho ===== -->
+    <header class="header">
+      <div class="header-brand">
+        <div class="header-logo">📊</div>
+        <div>
+          <h1>Ceará em Dados <span class="badge-ia">Chat IA</span></h1>
+          <p class="header-sub">Pergunte em português sobre dados públicos do Ceará</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-settings" class="btn-ghost" title="Configurar IA avançada (Gemini)">⚙️ IA avançada</button>
+        <a class="btn-ghost" href="https://github.com/PauloMatiasxvs/PROJETO-CEAR-EM-DADOS" target="_blank" rel="noopener">GitHub ↗</a>
+      </div>
+    </header>
+
+    <!-- ===== Área do chat ===== -->
+    <main class="chat" id="chat" aria-live="polite">
+      <!-- mensagens são inseridas aqui via JS -->
+    </main>
+
+    <!-- ===== Sugestões ===== -->
+    <div class="chips" id="chips">
+      <button class="chip">Qual a população de Fortaleza?</button>
+      <button class="chip">Top 10 municípios mais populosos</button>
+      <button class="chip">Compare Sobral e Juazeiro do Norte</button>
+      <button class="chip">Evolução do PIB do Ceará</button>
+      <button class="chip">Como está o desemprego no Ceará?</button>
+      <button class="chip">Evolução do IDEB do Ceará</button>
+    </div>
+
+    <!-- ===== Campo de entrada ===== -->
+    <footer class="composer">
+      <form id="form" autocomplete="off">
+        <input
+          id="input"
+          type="text"
+          placeholder="Ex.: qual o IDH de Sobral? · compare o PIB de Fortaleza e Caucaia…"
+          aria-label="Digite sua pergunta"
+          maxlength="200"
+        />
+        <button type="submit" id="btn-send" aria-label="Enviar">➤</button>
+      </form>
+      <p class="composer-note">
+        Fontes: IBGE (Censo 2022, PIB Municipal, PNAD Contínua), Atlas Brasil e INEP · valores consolidados para fins de demonstração
+      </p>
+    </footer>
+  </div>
+
+  <!-- ===== Modal de configuração (Gemini opcional) ===== -->
+  <dialog id="settings-modal" class="modal">
+    <h2>🤖 IA avançada (opcional)</h2>
+    <p>
+      Por padrão, o chat usa um <strong>motor de linguagem natural local</strong> que roda 100% no seu
+      navegador. Se quiser respostas mais elaboradas, cole uma chave gratuita da
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">API do Google Gemini</a>.
+      A chave fica salva apenas no seu navegador (localStorage).
+    </p>
+    <input id="api-key-input" type="password" placeholder="Chave da API do Gemini (opcional)" />
+    <div class="modal-actions">
+      <button id="btn-clear-key" class="btn-ghost">Remover chave</button>
+      <button id="btn-save-key" class="btn-primary">Salvar</button>
+      <button id="btn-close-modal" class="btn-ghost">Fechar</button>
+    </div>
+  </dialog>
+
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/nlu.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+/* ============================================================
+   Ceará em Dados — Chat IA
+   Tema escuro fixo · paleta validada para acessibilidade (CVD)
+   ============================================================ */
+
+:root {
+  /* superfícies */
+  --page:        #0d0d0d;
+  --surface:     #1a1a19;
+  --surface-2:   #232322;
+  --border:      rgba(255, 255, 255, 0.10);
+
+  /* tinta */
+  --ink:         #ffffff;
+  --ink-2:       #c3c2b7;
+  --ink-muted:   #898781;
+  --grid:        #2c2c2a;
+
+  /* série de dados (modo escuro, ordem fixa) */
+  --series-1: #3987e5;  /* azul   */
+  --series-2: #199e70;  /* verde-água */
+  --series-3: #c98500;  /* amarelo */
+  --series-4: #9085e9;  /* violeta */
+
+  --accent:      #3987e5;
+  --accent-soft: rgba(57, 135, 229, 0.14);
+
+  --radius: 14px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--page);
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+}
+
+.app {
+  width: 100%;
+  max-width: 860px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+}
+
+/* ===== Cabeçalho ===== */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-brand { display: flex; align-items: center; gap: 12px; }
+
+.header-logo {
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  font-size: 22px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+
+.badge-ia {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(57, 135, 229, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+  vertical-align: 2px;
+  margin-left: 6px;
+}
+
+.header-sub { font-size: 12.5px; color: var(--ink-muted); margin-top: 2px; }
+
+.header-actions { display: flex; gap: 8px; }
+
+.btn-ghost {
+  font-family: var(--font);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-ghost:hover { background: var(--surface-2); }
+
+/* ===== Chat ===== */
+.chat {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 4px;
+  scroll-behavior: smooth;
+}
+
+.msg {
+  max-width: 92%;
+  animation: rise 0.25s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.msg-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius) var(--radius) 4px var(--radius);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.msg-bot {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  border-radius: var(--radius) var(--radius) var(--radius) 4px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  width: 100%;
+}
+
+.msg-bot strong { color: var(--ink); }
+.msg-bot .src { display: block; margin-top: 8px; font-size: 11.5px; color: var(--ink-muted); }
+
+/* indicador de digitação */
+.typing { display: inline-flex; gap: 5px; padding: 4px 2px; }
+.typing span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink-muted);
+  animation: blink 1.2s infinite ease-in-out;
+}
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes blink { 0%, 70%, 100% { opacity: 0.25; } 35% { opacity: 1; } }
+
+/* ===== Cartão de gráfico ===== */
+.chart-card {
+  margin-top: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.chart-title { font-size: 13.5px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.chart-sub   { font-size: 12px; color: var(--ink-muted); margin-bottom: 12px; }
+.chart-wrap  { position: relative; width: 100%; height: 300px; }
+.chart-src   { margin-top: 10px; font-size: 11px; color: var(--ink-muted); }
+
+/* ===== Cartão de estatística (número herói) ===== */
+.stat-card {
+  margin-top: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label { font-size: 12.5px; color: var(--ink-muted); }
+.stat-value { font-size: 34px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+.stat-note  { font-size: 12px; color: var(--ink-2); }
+
+/* ===== Sugestões ===== */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 4px 10px;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  font-family: var(--font);
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+
+/* ===== Entrada ===== */
+.composer { padding: 0 4px 14px; }
+
+.composer form {
+  display: flex;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px 6px 6px 18px;
+  transition: border-color 0.15s;
+}
+.composer form:focus-within { border-color: var(--accent); }
+
+.composer input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 14.5px;
+}
+.composer input::placeholder { color: var(--ink-muted); }
+
+#btn-send {
+  width: 42px; height: 42px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+#btn-send:hover { opacity: 0.88; }
+
+.composer-note {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  margin-top: 8px;
+}
+
+/* ===== Modal ===== */
+.modal {
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 480px;
+  width: calc(100% - 32px);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.modal::backdrop { background: rgba(0, 0, 0, 0.6); }
+.modal h2 { color: var(--ink); font-size: 16px; margin-bottom: 10px; }
+.modal a { color: var(--accent); }
+.modal input {
+  width: 100%;
+  margin-top: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 13.5px;
+  outline: none;
+}
+.modal input:focus { border-color: var(--accent); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.btn-primary {
+  font-family: var(--font);
+  font-size: 12.5px;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+/* ===== Responsivo ===== */
+@media (max-width: 560px) {
+  .header-sub { display: none; }
+  .header-actions .btn-ghost:last-child { display: none; }
+  .chart-wrap { height: 240px; }
+  .stat-value { font-size: 28px; }
+}
