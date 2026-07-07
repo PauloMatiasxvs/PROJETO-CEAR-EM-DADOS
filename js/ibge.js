@@ -91,8 +91,10 @@ const IBGE = (() => {
       const chave = NLU.normalizar(api.nome);
       const existente = porNome.get(chave);
       if (existente) {
-        // enriquece os 12 embutidos com o código IBGE (necessário para o mapa)
+        // enriquece os 12 embutidos com o código IBGE (necessário para o
+        // mapa) e prefere o número oficial do Censo vindo da API
         existente.codigo = api.codigo;
+        existente.populacao = api.populacao;
       } else {
         CE_DATA.municipios.push({ nome: api.nome, populacao: api.populacao, codigo: api.codigo });
       }
