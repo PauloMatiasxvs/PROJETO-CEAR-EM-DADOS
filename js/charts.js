@@ -124,6 +124,11 @@ const CHARTS = (() => {
     `;
     container.appendChild(card);
 
+    // barras horizontais crescem com o número de itens (rankings grandes)
+    if (g.tipo === "barra" && g.rotulos.length > 8) {
+      card.querySelector(".chart-wrap").style.height = `${60 + g.rotulos.length * 26}px`;
+    }
+
     const canvas = card.querySelector("canvas");
     if (g.tipo === "linha") linha(canvas, g);
     else barra(canvas, g);

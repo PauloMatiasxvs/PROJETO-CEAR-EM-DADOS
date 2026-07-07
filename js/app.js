@@ -1,8 +1,11 @@
 /* ============================================================
    Ceará em Dados — controle da interface do chat
    · fluxo padrão: NLU local (zero configuração)
-   · fluxo opcional: reescrita da resposta via API do Gemini,
-     usando a resposta estruturada do NLU como contexto
+   · com chave do Gemini configurada:
+     - pergunta entendida → o LLM só refina o texto da resposta
+     - pergunta NÃO entendida → o LLM interpreta e devolve uma
+       intenção estruturada em JSON, que é executada sobre a
+       base local (os números nunca vêm do modelo)
    ============================================================ */
 
 (() => {
@@ -54,18 +57,9 @@
   };
 
   // ---------- Gemini (opcional) ----------
-  const reescreverComGemini = async (pergunta, respostaLocal) => {
+  const chamarGemini = async (prompt) => {
     const key = getApiKey();
     if (!key) return null;
-
-    const contexto = respostaLocal.texto.replace(/<[^>]+>/g, "");
-    const prompt =
-      `Você é o assistente do "Ceará em Dados", um chatbot sobre dados públicos do Ceará. ` +
-      `O usuário perguntou: "${pergunta}". O sistema local encontrou esta resposta nos dados: ` +
-      `"${contexto}". Reescreva a resposta em português brasileiro, em no máximo 3 frases, ` +
-      `de forma amigável e informativa, mantendo TODOS os números exatamente como estão. ` +
-      `Não invente dados. Responda apenas com o texto final, sem markdown.`;
-
     try {
       const resp = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
@@ -77,10 +71,44 @@
       );
       if (!resp.ok) return null;
       const json = await resp.json();
-      const texto = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      return texto || null;
+      return json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
     } catch {
       return null; // falha de rede/chave → segue com a resposta local
+    }
+  };
+
+  // refina o texto de uma resposta já entendida
+  const refinarComGemini = async (pergunta, respostaLocal) => {
+    const contexto = respostaLocal.texto.replace(/<[^>]+>/g, "");
+    return chamarGemini(
+      `Você é o assistente do "Ceará em Dados", um chatbot sobre dados públicos do Ceará. ` +
+        `O usuário perguntou: "${pergunta}". O sistema local encontrou esta resposta nos dados: ` +
+        `"${contexto}". Reescreva a resposta em português brasileiro, em no máximo 3 frases, ` +
+        `de forma amigável e informativa, mantendo TODOS os números exatamente como estão. ` +
+        `Não invente dados. Responda apenas com o texto final, sem markdown.`
+    );
+  };
+
+  // pergunta não entendida → pede ao LLM uma intenção estruturada
+  const interpretarComGemini = async (pergunta) => {
+    const bruto = await chamarGemini(
+      `Você interpreta perguntas sobre dados públicos do Ceará e responde SOMENTE com JSON válido, ` +
+        `sem markdown e sem texto extra, neste formato: ` +
+        `{"intencao":"valor|ranking|comparacao|evolucao|mapa","municipios":["Nome"],` +
+        `"indicador":"populacao|pib|pibPerCapita|idhm|ideb|desemprego|area|densidade",` +
+        `"topN":10,"menores":false}. ` +
+        `Regras: "municipios" só com municípios do Ceará citados (pode ficar vazio); ` +
+        `"evolucao" é para séries históricas do estado; "mapa" quando pedirem mapa; ` +
+        `se não der para interpretar, responda {"intencao":"desconhecida"}. ` +
+        `Pergunta: "${pergunta}"`
+    );
+    if (!bruto) return null;
+    try {
+      const json = JSON.parse(bruto.replace(/^```json?\s*/i, "").replace(/```\s*$/, ""));
+      if (!json || json.intencao === "desconhecida") return null;
+      return NLU.executar(json);
+    } catch {
+      return null;
     }
   };
 
@@ -98,18 +126,29 @@
     // pequena pausa para a resposta não parecer instantânea demais
     await new Promise((r) => setTimeout(r, 450));
 
-    const resposta = NLU.responder(pergunta);
+    let resposta = NLU.responder(pergunta);
+    let badge = "";
 
-    // tenta enriquecer o texto com o Gemini, se configurado
-    const textoGemini = await reescreverComGemini(pergunta, resposta);
-    const badge = textoGemini
-      ? '<span class="src">✨ resposta refinada pela API do Gemini</span>'
-      : "";
+    if (resposta.fallback) {
+      // o motor local não entendeu — tenta o Gemini como interpretador
+      const interpretada = await interpretarComGemini(pergunta);
+      if (interpretada) {
+        resposta = interpretada;
+        badge = '<span class="src">✨ pergunta interpretada com ajuda da API do Gemini</span>';
+      }
+    } else {
+      const refinado = await refinarComGemini(pergunta, resposta);
+      if (refinado) {
+        resposta = { ...resposta, texto: refinado };
+        badge = '<span class="src">✨ resposta refinada pela API do Gemini</span>';
+      }
+    }
 
-    typing.innerHTML = (textoGemini || resposta.texto) + badge;
+    typing.innerHTML = resposta.texto + badge;
 
     if (resposta.grafico) CHARTS.renderizar(typing, resposta.grafico);
     if (resposta.stat) addStat(typing, resposta.stat);
+    if (resposta.mapa) await MAPA.renderizar(typing, resposta.mapa.indicador);
 
     rolarParaFim();
     processando = false;
@@ -141,11 +180,14 @@
     apiKeyInput.value = "";
   });
 
-  // ---------- mensagem de boas-vindas ----------
+  // ---------- inicialização ----------
+  IBGE.iniciar(); // carrega os 184 municípios em segundo plano
+
   addBot(
     `Olá! 👋 Sou o assistente do <strong>Ceará em Dados</strong>. Pergunte em português sobre ` +
       `<strong>população, PIB, IDH, IDEB, desemprego, área e densidade</strong> dos municípios ` +
-      `cearenses — eu respondo com números e gráficos. Experimente as sugestões abaixo ou digite ` +
-      `<em>"ajuda"</em> para ver exemplos. 🚀`
+      `cearenses — eu respondo com números, gráficos e até <strong>mapa</strong>. Pode emendar ` +
+      `perguntas ("qual a população de Sobral?" → "e o IDH?") e não se preocupe com erro de ` +
+      `digitação. Experimente as sugestões abaixo ou digite <em>"ajuda"</em>. 🚀`
   );
 })();
