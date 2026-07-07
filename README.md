@@ -28,8 +28,9 @@ Evolução do projeto **Ceará em Dados**: em vez de dashboards fixos, agora é 
 | *"Top 10 municípios mais populosos"* | Gráfico de barras com o ranking |
 | *"Compare Sobral e Juazeiro do Norte"* | Barras lado a lado |
 | *"Evolução do PIB do Ceará"* | Gráfico de linha 2010–2021 |
-| *"Como está o desemprego no Ceará?"* | Série da PNAD Contínua 2016–2023 |
-| *"Top 5 em densidade"* | Ranking de densidade demográfica |
+| *"Mapa da população"* | Mapa coroplético dos 184 municípios |
+| *"e o IDH?"* (depois de perguntar sobre um município) | Continua a conversa pelo contexto |
+| *"populaçao de fortalesa"* (com erro de digitação) | Entende mesmo assim ✌️ |
 
 <p align="center">
   <img src="docs/screenshot-evolucao.png" alt="Chat respondendo 'Evolução do desemprego no Ceará' com gráfico de linha" width="720" />
@@ -40,18 +41,32 @@ Evolução do projeto **Ceará em Dados**: em vez de dashboards fixos, agora é 
 O coração do projeto é um **pipeline de NLU (Natural Language Understanding) escrito do zero em JavaScript puro**, sem nenhuma dependência — roda inteiro no navegador:
 
 ```
-pergunta → normalização → extração de entidades → detecção de indicador → classificação de intenção → resposta estruturada → gráfico
+pergunta → normalização → entidades (exatas + fuzzy) → indicador → intenção → contexto da conversa → resposta estruturada → gráfico/mapa
 ```
 
 - **Normalização** — minúsculas, remoção de acentos e pontuação
-- **Extração de entidades** — casamento por dicionário dos municípios cearenses
-- **Detecção de indicador** — população, PIB, PIB per capita, IDHM, IDEB, desemprego, área, densidade
-- **Classificação de intenção** — valor pontual · ranking (com top N dinâmico) · comparação · evolução temporal · ajuda/saudação
-- **Resposta estruturada** — um objeto `{ texto, grafico | stat }` que a interface transforma em balão de chat + visualização
+- **Extração de entidades** — casamento por palavra dos 184 municípios + **casamento aproximado** (distância de Levenshtein) para tolerar erros de digitação: "fortalesa", "juazero do norte"…
+- **Detecção de indicador** — população, PIB, PIB per capita, IDHM, IDEB, desemprego, área, densidade (também com tolerância a typos)
+- **Classificação de intenção** — valor pontual · ranking (com top N dinâmico) · comparação · evolução temporal · **mapa** · ajuda/saudação
+- **Contexto de conversa** — o motor lembra o último município e indicador: depois de "população de Sobral?", basta perguntar *"e o IDH?"* ou *"e Quixadá?"*
+- **Resposta estruturada** — um objeto `{ texto, grafico | stat | mapa }` que a interface transforma em balão de chat + visualização
+
+### 🌐 Dados ao vivo do IBGE
+
+Ao abrir, o app busca a **população dos 184 municípios do Ceará** (Censo 2022) direto da [API de agregados do IBGE](https://servicodados.ibge.gov.br/api/docs), e o mapa usa a **API de malhas territoriais** (GeoJSON). Tudo com cache em `localStorage` (7 dias) e **fallback offline**: sem conexão, o app segue funcionando com a base embutida dos 12 maiores municípios.
+
+### 🗺️ Mapa coroplético
+
+Peça *"mapa da população"* (ou do IDH, densidade…) e o app desenha a malha municipal do IBGE em **SVG puro** — projeção equirretangular calculada na mão, escala de cores por **quantis** (para a assimetria de Fortaleza não achatar o resto do estado), tooltip por município e legenda com as faixas.
 
 ### ✨ Modo IA avançada (opcional)
 
-No botão **⚙️ IA avançada**, dá para colar uma chave gratuita da [API do Google Gemini](https://aistudio.google.com/apikey). Aí a resposta local vira **contexto** para o LLM reescrever o texto de forma mais natural — os números continuam vindo da base local (nada de alucinação de dados), e a chave fica só no `localStorage` do navegador. Sem chave, tudo funciona igual: o app **não depende de nenhum serviço externo**.
+No botão **⚙️ IA avançada**, dá para colar uma chave gratuita da [API do Google Gemini](https://aistudio.google.com/apikey). O LLM entra em dois papéis:
+
+1. **Pergunta entendida** → ele só **reescreve o texto** da resposta de forma mais natural
+2. **Pergunta que o motor local não entendeu** → ele **interpreta e devolve uma intenção estruturada em JSON** (`{intencao, municipios, indicador}`), que é executada sobre a base local — na prática, *function calling*
+
+Nos dois casos **os números vêm sempre da base local** (nada de alucinação de dados), e a chave fica só no `localStorage`. Sem chave, tudo funciona igual: o app **não depende de nenhum serviço para as respostas**.
 
 ## 🗂️ Estrutura
 
@@ -59,9 +74,11 @@ No botão **⚙️ IA avançada**, dá para colar uma chave gratuita da [API do 
 ├── index.html          # estrutura da página (chat, sugestões, modal)
 ├── css/style.css       # tema escuro, paleta acessível validada p/ daltonismo
 ├── js/
-│   ├── data.js         # base de dados embutida (municípios + séries do estado)
+│   ├── data.js         # base embutida (12 maiores municípios + séries do estado)
 │   ├── nlu.js          # motor de linguagem natural (o cérebro)
+│   ├── ibge.js         # APIs do IBGE: 184 municípios, malha, cache e fallback
 │   ├── charts.js       # renderização dos gráficos (Chart.js)
+│   ├── mapa.js         # mapa coroplético do Ceará em SVG puro
 │   └── app.js          # controle do chat + integração opcional c/ Gemini
 ├── vendor/chart.umd.min.js  # Chart.js embutido (funciona offline)
 └── docs/               # screenshots
@@ -71,7 +88,8 @@ No botão **⚙️ IA avançada**, dá para colar uma chave gratuita da [API do 
 
 | Indicador | Fonte |
 |---|---|
-| População (12 maiores municípios) | IBGE — Censo Demográfico 2022 |
+| População (184 municípios) | IBGE — Censo 2022, via API de agregados (ao vivo) |
+| Malha municipal (mapa) | IBGE — API de malhas territoriais (GeoJSON, ao vivo) |
 | PIB do estado e PIB per capita | IBGE — Contas Regionais / PIB dos Municípios (valores aproximados) |
 | IDHM | Atlas Brasil / PNUD — IDHM 2010 |
 | IDEB (anos iniciais, rede pública) | INEP (valores aproximados) |
@@ -96,7 +114,9 @@ O deploy no GitHub Pages é automático a cada push na `main` (workflow em `.git
 
 ## 🗺️ Próximos passos
 
-- [ ] Todos os 184 municípios do Ceará via API do IBGE
+- [x] Todos os 184 municípios do Ceará via API do IBGE
+- [x] Mapa coroplético do estado
+- [x] Contexto de conversa e tolerância a erros de digitação
 - [ ] Mais séries históricas (saúde, segurança, chuvas/FUNCEME)
 - [ ] Modo de voz (Web Speech API)
 - [ ] Exportar o gráfico como imagem direto do chat
