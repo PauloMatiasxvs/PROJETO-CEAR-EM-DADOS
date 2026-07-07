@@ -37,6 +37,19 @@ jobs:
           baixar "https://servicodados.ibge.gov.br/api/v1/localidades/estados/23/municipios?orderBy=nome" localidades.json
           baixar "https://servicodados.ibge.gov.br/api/v3/malhas/estados/23?formato=application%2Fvnd.geo%2Bjson&qualidade=minima&intrarregiao=municipio" malha.json
 
+      - name: Reaproveita a última versão publicada se o IBGE estiver fora do ar
+        run: |
+          git fetch origin gh-pages || exit 0
+          for f in populacao.json localidades.json malha.json; do
+            if [ ! -f "dados/$f" ]; then
+              ultimo=$(git rev-list -1 origin/gh-pages -- "dados/$f" || true)
+              if [ -n "$ultimo" ]; then
+                git checkout "$ultimo" -- "dados/$f"
+                echo "recuperado: dados/$f (deploy anterior $ultimo)"
+              fi
+            fi
+          done
+
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
